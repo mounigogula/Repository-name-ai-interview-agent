@@ -1,12 +1,10 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
 from google import genai
 
 app = FastAPI(title="AI Interview Agent")
 
-# Gemini setup
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
@@ -14,24 +12,9 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-chat = client.chats.create(
-    model="gemini-3.6-flash"
-)
 
+def generate_questions(role, interview_type, difficulty, number_of_questions):
 
-class InterviewRequest(BaseModel):
-    role: str
-    interview_type: str
-    difficulty: str
-    number_of_questions: int
-
-
-def generate_questions(
-    role,
-    interview_type,
-    difficulty,
-    number_of_questions
-):
     prompt = f"""
 You are an AI interviewer.
 
@@ -48,455 +31,296 @@ Rules:
 - Return only the questions.
 """
 
-    response = chat.send_message(prompt)
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=prompt
+    )
 
     return response.text
 
 
 @app.get("/", response_class=HTMLResponse)
 def home():
+
     return """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Interview Agent</title>
 
-    <title>AI Interview Agent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+<style>
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            min-height: 100vh;
-            padding: 30px 15px;
-        }
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    margin: 0;
+    padding: 30px;
+}
 
-        .container {
-            max-width: 850px;
-            margin: auto;
-            background: white;
-            border-radius: 20px;
-            padding: 35px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-        }
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 35px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+h1 {
+    text-align: center;
+    color: #333;
+}
 
-        .header h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 36px;
-        }
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
 
-        .header p {
-            color: #666;
-            font-size: 17px;
-        }
+label {
+    display: block;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 7px;
+}
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+input, select {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+}
 
-        label {
-            display: block;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 8px;
-        }
+button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 15px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
 
-        input,
-        select {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            font-size: 16px;
-        }
+button:hover {
+    background: #5568d9;
+}
 
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+.info {
+    background: #f2f3ff;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 25px;
+}
 
-        button {
-            width: 100%;
-            padding: 15px;
-            margin-top: 5px;
-            border: none;
-            border-radius: 10px;
-            background: #667eea;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+.question {
+    background: #f7f7ff;
+    border-left: 5px solid #667eea;
+    padding: 15px;
+    margin-top: 12px;
+    border-radius: 8px;
+    line-height: 1.6;
+}
 
-        button:hover {
-            background: #5568d9;
-        }
-
-        button:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
-
-        #loading {
-            display: none;
-            text-align: center;
-            margin-top: 20px;
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        #error {
-            display: none;
-            margin-top: 20px;
-            padding: 15px;
-            background: #ffe5e5;
-            color: #c62828;
-            border-radius: 10px;
-        }
-
-        #result {
-            display: none;
-            margin-top: 30px;
-        }
-
-        #result h2 {
-            color: #333;
-        }
-
-        .info {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .badge {
-            background: #eef0ff;
-            color: #4c5bd4;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .question-box {
-            background: #f7f8ff;
-            border-left: 5px solid #667eea;
-            padding: 18px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            line-height: 1.6;
-            color: #333;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #777;
-            font-size: 14px;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 25px 20px;
-            }
-
-            .header h1 {
-                font-size: 28px;
-            }
-        }
-    </style>
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-    <div class="header">
-        <h1>🤖 AI Interview Agent</h1>
-        <p>Generate personalized interview questions using AI</p>
-    </div>
+<h1>🤖 AI Interview Agent</h1>
 
-    <div class="form-group">
-        <label>Job Role</label>
+<p class="subtitle">
+Generate personalized interview questions using AI
+</p>
 
-        <input
-            type="text"
-            id="role"
-            placeholder="Example: Python Developer"
-        >
-    </div>
+<form method="post" action="/start-interview">
 
-    <div class="form-group">
-        <label>Interview Type</label>
+<label>Job Role</label>
 
-        <select id="interview_type">
-            <option value="Technical">Technical</option>
-            <option value="HR">HR</option>
-            <option value="Behavioral">Behavioral</option>
-            <option value="Mixed">Mixed</option>
-        </select>
-    </div>
+<input
+    type="text"
+    name="role"
+    placeholder="Example: Python Developer"
+    required
+>
 
-    <div class="form-group">
-        <label>Difficulty</label>
+<label>Interview Type</label>
 
-        <select id="difficulty">
-            <option value="Easy">Easy</option>
-            <option value="Medium" selected>Medium</option>
-            <option value="Hard">Hard</option>
-        </select>
-    </div>
+<select name="interview_type">
 
-    <div class="form-group">
-        <label>Number of Questions</label>
+<option value="Technical">Technical</option>
+<option value="HR">HR</option>
+<option value="Behavioral">Behavioral</option>
+<option value="Mixed">Mixed</option>
 
-        <select id="number_of_questions">
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="15">15</option>
-            <option value="20">20</option>
-        </select>
-    </div>
+</select>
 
-    <button id="generateButton" onclick="generateInterview()">
-        🚀 Start Interview
-    </button>
+<label>Difficulty</label>
 
-    <div id="loading">
-        ⏳ AI is generating your interview questions...
-    </div>
+<select name="difficulty">
 
-    <div id="error"></div>
+<option value="Easy">Easy</option>
+<option value="Medium" selected>Medium</option>
+<option value="Hard">Hard</option>
 
-    <div id="result">
+</select>
 
-        <h2>📋 Interview Questions</h2>
+<label>Number of Questions</label>
 
-        <div class="info">
-            <div class="badge" id="roleBadge"></div>
-            <div class="badge" id="typeBadge"></div>
-            <div class="badge" id="difficultyBadge"></div>
-            <div class="badge" id="countBadge"></div>
-        </div>
+<select name="number_of_questions">
 
-        <div id="questions"></div>
+<option value="5">5</option>
+<option value="10">10</option>
+<option value="15">15</option>
+<option value="20">20</option>
 
-    </div>
+</select>
 
-    <div class="footer">
-        Powered by AI Interview Agent
-    </div>
+<button type="submit">
+🚀 Start Interview
+</button>
+
+</form>
 
 </div>
-
-
-<script>
-
-async function generateInterview() {
-
-    const roleInput = document.getElementById("role");
-
-    const role = roleInput.value.trim();
-
-    const interviewType =
-        document.getElementById("interview_type").value;
-
-    const difficulty =
-        document.getElementById("difficulty").value;
-
-    const numberOfQuestions =
-        parseInt(
-            document.getElementById("number_of_questions").value
-        );
-
-    const button =
-        document.getElementById("generateButton");
-
-    const loading =
-        document.getElementById("loading");
-
-    const result =
-        document.getElementById("result");
-
-    const error =
-        document.getElementById("error");
-
-    const questionsDiv =
-        document.getElementById("questions");
-
-
-    if (role === "") {
-
-        alert("Please enter a job role.");
-
-        roleInput.focus();
-
-        return;
-    }
-
-
-    button.disabled = true;
-
-    button.innerHTML =
-        "⏳ Generating Questions...";
-
-    loading.style.display = "block";
-
-    result.style.display = "none";
-
-    error.style.display = "none";
-
-
-    try {
-
-        const response = await fetch(
-            window.location.origin + "/generate-interview",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-
-                body: JSON.stringify({
-                    role: role,
-                    interview_type: interviewType,
-                    difficulty: difficulty,
-                    number_of_questions: numberOfQuestions
-                })
-            }
-        );
-
-
-        const data = await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.detail || "Failed to generate questions."
-            );
-
-        }
-
-
-        if (!data.questions) {
-
-            throw new Error(
-                "The AI did not return any questions."
-            );
-
-        }
-
-
-        document.getElementById("roleBadge").textContent =
-            "Role: " + data.role;
-
-        document.getElementById("typeBadge").textContent =
-            "Type: " + data.interview_type;
-
-        document.getElementById("difficultyBadge").textContent =
-            "Difficulty: " + data.difficulty;
-
-        document.getElementById("countBadge").textContent =
-            "Questions: " + data.number_of_questions;
-
-
-        questionsDiv.innerHTML = "";
-
-
-        const questionLines =
-            data.questions.split("\n");
-
-
-        questionLines.forEach(function(line) {
-
-            const text = line.trim();
-
-            if (text !== "") {
-
-                const questionBox =
-                    document.createElement("div");
-
-                questionBox.className =
-                    "question-box";
-
-                questionBox.textContent = text;
-
-                questionsDiv.appendChild(
-                    questionBox
-                );
-
-            }
-
-        });
-
-
-        result.style.display = "block";
-
-
-        result.scrollIntoView({
-            behavior: "smooth"
-        });
-
-
-    } catch (errorObject) {
-
-        error.textContent =
-            "❌ " + errorObject.message;
-
-        error.style.display = "block";
-
-
-    } finally {
-
-        loading.style.display = "none";
-
-        button.disabled = false;
-
-        button.innerHTML =
-            "🚀 Start Interview";
-
-    }
-
-}
-
-</script>
 
 </body>
 </html>
 """
 
 
-@app.post("/generate-interview")
-def generate_interview(request: InterviewRequest):
+@app.post("/start-interview", response_class=HTMLResponse)
+def start_interview(
+    role: str = Form(...),
+    interview_type: str = Form(...),
+    difficulty: str = Form(...),
+    number_of_questions: int = Form(...)
+):
 
     questions = generate_questions(
-        role=request.role,
-        interview_type=request.interview_type,
-        difficulty=request.difficulty,
-        number_of_questions=request.number_of_questions
+        role,
+        interview_type,
+        difficulty,
+        number_of_questions
     )
 
+    question_html = ""
+
+    for line in questions.split("\n"):
+
+        line = line.strip()
+
+        if line:
+            question_html += f"""
+            <div class="question">
+                {line}
+            </div>
+            """
+
+    return f"""
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<title>AI Interview Questions</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+body {{
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    margin: 0;
+    padding: 30px;
+}}
+
+.container {{
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 35px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}}
+
+h1 {{
+    text-align: center;
+    color: #333;
+}}
+
+.info {{
+    background: #f2f3ff;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 20px 0;
+}}
+
+.question {{
+    background: #f7f7ff;
+    border-left: 5px solid #667eea;
+    padding: 15px;
+    margin-top: 12px;
+    border-radius: 8px;
+    line-height: 1.6;
+}}
+
+.back {{
+    display: block;
+    text-align: center;
+    margin-top: 25px;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📋 Interview Questions</h1>
+
+<div class="info">
+
+<strong>Role:</strong> {role}<br>
+<strong>Interview Type:</strong> {interview_type}<br>
+<strong>Difficulty:</strong> {difficulty}<br>
+<strong>Questions:</strong> {number_of_questions}
+
+</div>
+
+{question_html}
+
+<a class="back" href="/">
+⬅️ Start Another Interview
+</a>
+
+</div>
+
+</body>
+
+</html>
+"""
+
+
+@app.get("/docs")
+def docs_info():
     return {
-        "role": request.role,
-        "interview_type": request.interview_type,
-        "difficulty": request.difficulty,
-        "number_of_questions": request.number_of_questions,
-        "questions": questions
+        "message": "AI Interview Agent API",
+        "endpoint": "/start-interview"
     }

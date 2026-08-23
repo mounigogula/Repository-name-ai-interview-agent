@@ -57,11 +57,12 @@ Rules:
 def home():
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Interview Agent</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Interview Agent</title>
 
     <style>
         * {
@@ -91,9 +92,9 @@ def home():
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 36px;
             color: #333;
+            margin-bottom: 10px;
+            font-size: 36px;
         }
 
         .header p {
@@ -108,19 +109,21 @@ def home():
         label {
             display: block;
             font-weight: bold;
-            margin-bottom: 8px;
             color: #333;
+            margin-bottom: 8px;
         }
 
-        input, select {
+        input,
+        select {
             width: 100%;
-            padding: 13px;
+            padding: 14px;
             border: 1px solid #ccc;
             border-radius: 10px;
             font-size: 16px;
         }
 
-        input:focus, select:focus {
+        input:focus,
+        select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -128,6 +131,7 @@ def home():
         button {
             width: 100%;
             padding: 15px;
+            margin-top: 5px;
             border: none;
             border-radius: 10px;
             background: #667eea;
@@ -135,7 +139,6 @@ def home():
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
         }
 
         button:hover {
@@ -159,9 +162,9 @@ def home():
             display: none;
             margin-top: 20px;
             padding: 15px;
-            border-radius: 10px;
             background: #ffe5e5;
             color: #c62828;
+            border-radius: 10px;
         }
 
         #result {
@@ -170,16 +173,6 @@ def home():
         }
 
         #result h2 {
-            color: #333;
-        }
-
-        .question-box {
-            background: #f7f8ff;
-            border-left: 5px solid #667eea;
-            padding: 18px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            line-height: 1.6;
             color: #333;
         }
 
@@ -197,6 +190,16 @@ def home():
             border-radius: 20px;
             font-size: 14px;
             font-weight: bold;
+        }
+
+        .question-box {
+            background: #f7f8ff;
+            border-left: 5px solid #667eea;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #333;
         }
 
         .footer {
@@ -228,7 +231,8 @@ def home():
     </div>
 
     <div class="form-group">
-        <label for="role">Job Role</label>
+        <label>Job Role</label>
+
         <input
             type="text"
             id="role"
@@ -237,7 +241,8 @@ def home():
     </div>
 
     <div class="form-group">
-        <label for="interview_type">Interview Type</label>
+        <label>Interview Type</label>
+
         <select id="interview_type">
             <option value="Technical">Technical</option>
             <option value="HR">HR</option>
@@ -247,7 +252,8 @@ def home():
     </div>
 
     <div class="form-group">
-        <label for="difficulty">Difficulty</label>
+        <label>Difficulty</label>
+
         <select id="difficulty">
             <option value="Easy">Easy</option>
             <option value="Medium" selected>Medium</option>
@@ -256,7 +262,8 @@ def home():
     </div>
 
     <div class="form-group">
-        <label for="number_of_questions">Number of Questions</label>
+        <label>Number of Questions</label>
+
         <select id="number_of_questions">
             <option value="5">5</option>
             <option value="10">10</option>
@@ -277,7 +284,7 @@ def home():
 
     <div id="result">
 
-        <h2>📋 Your Interview Questions</h2>
+        <h2>📋 Interview Questions</h2>
 
         <div class="info">
             <div class="badge" id="roleBadge"></div>
@@ -296,56 +303,106 @@ def home():
 
 </div>
 
+
 <script>
 
 async function generateInterview() {
 
-    const role = document.getElementById("role").value.trim();
+    const roleInput = document.getElementById("role");
+
+    const role = roleInput.value.trim();
+
     const interviewType =
         document.getElementById("interview_type").value;
+
     const difficulty =
         document.getElementById("difficulty").value;
+
     const numberOfQuestions =
-        parseInt(document.getElementById("number_of_questions").value);
+        parseInt(
+            document.getElementById("number_of_questions").value
+        );
 
-    const button = document.getElementById("generateButton");
-    const loading = document.getElementById("loading");
-    const result = document.getElementById("result");
-    const error = document.getElementById("error");
-    const questionsDiv = document.getElementById("questions");
+    const button =
+        document.getElementById("generateButton");
 
-    if (!role) {
+    const loading =
+        document.getElementById("loading");
+
+    const result =
+        document.getElementById("result");
+
+    const error =
+        document.getElementById("error");
+
+    const questionsDiv =
+        document.getElementById("questions");
+
+
+    if (role === "") {
+
         alert("Please enter a job role.");
+
+        roleInput.focus();
+
         return;
     }
 
+
     button.disabled = true;
+
+    button.innerHTML =
+        "⏳ Generating Questions...";
+
     loading.style.display = "block";
+
     result.style.display = "none";
+
     error.style.display = "none";
+
 
     try {
 
-        const response = await fetch("/generate-interview", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                role: role,
-                interview_type: interviewType,
-                difficulty: difficulty,
-                number_of_questions: numberOfQuestions
-            })
-        });
+        const response = await fetch(
+            window.location.origin + "/generate-interview",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+
+                body: JSON.stringify({
+                    role: role,
+                    interview_type: interviewType,
+                    difficulty: difficulty,
+                    number_of_questions: numberOfQuestions
+                })
+            }
+        );
+
 
         const data = await response.json();
 
+
         if (!response.ok) {
+
             throw new Error(
-                data.detail || "Something went wrong."
+                data.detail || "Failed to generate questions."
             );
+
         }
+
+
+        if (!data.questions) {
+
+            throw new Error(
+                "The AI did not return any questions."
+            );
+
+        }
+
 
         document.getElementById("roleBadge").textContent =
             "Role: " + data.role;
@@ -359,45 +416,64 @@ async function generateInterview() {
         document.getElementById("countBadge").textContent =
             "Questions: " + data.number_of_questions;
 
+
         questionsDiv.innerHTML = "";
+
 
         const questionLines =
             data.questions.split("\n");
 
+
         questionLines.forEach(function(line) {
 
-            if (line.trim() !== "") {
+            const text = line.trim();
 
-                const box = document.createElement("div");
+            if (text !== "") {
 
-                box.className = "question-box";
+                const questionBox =
+                    document.createElement("div");
 
-                box.textContent = line.trim();
+                questionBox.className =
+                    "question-box";
 
-                questionsDiv.appendChild(box);
+                questionBox.textContent = text;
+
+                questionsDiv.appendChild(
+                    questionBox
+                );
+
             }
 
         });
 
+
         result.style.display = "block";
+
 
         result.scrollIntoView({
             behavior: "smooth"
         });
 
-    } catch (err) {
+
+    } catch (errorObject) {
 
         error.textContent =
-            "❌ Error: " + err.message;
+            "❌ " + errorObject.message;
 
         error.style.display = "block";
+
 
     } finally {
 
         loading.style.display = "none";
 
         button.disabled = false;
+
+        button.innerHTML =
+            "🚀 Start Interview";
+
     }
+
 }
 
 </script>
